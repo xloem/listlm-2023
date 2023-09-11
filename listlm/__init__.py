@@ -59,7 +59,7 @@ class Model:
             ))
 
         output = self.model.generate(inputs=input_ids, do_sample=False, max_new_tokens=512, stopping_criteria=criteria)
-        return self.tokenizer.decode(output[0][input_ids.shape[0]:])
+        return self.tokenizer.decode(output[0][...,input_ids.shape[-1]:])
 
     def output(self, prompt, **kwparams):
         print(prompt)

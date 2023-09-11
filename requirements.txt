@@ -1,5 +1,0 @@
-transformers>=4.32.0
-optimum>=1.12.0
-
---extra-index-url https://huggingface.github.io/autogptq-index/whl/cu118/
-auto-gptq

@@ -23,12 +23,15 @@ class Model:
         self.model = None
 
     class _StreamingOutput(StoppingCriteria):
-        def __init__(self, prompt_length, callback):
-            self.length = prompt_length
+        def __init__(self, prompt_length, tokenizer, callback):
+            self.prompt_length = prompt_length
+            self.text = ''
+            self.tokenizer = tokenizer
             self.callback = callback
         def __call__(self, input_ids, scores, **kwparams):
-            self.callback(input_ids[...,self.length:])
-            self.length = input_ids.shape[-1]
+            text_length = len(self.text)
+            self.text = self.tokenizer.decode(input_ids[0,self.prompt_length:])
+            self.callback(self.text[text_length:])
             return False
 
     def forward(self, prompt, callback = None, **kwparams):
@@ -50,7 +53,8 @@ class Model:
         if callback:
             criteria.append(self._StreamingOutput(
                 input_ids.shape[-1],
-                lambda input_ids: callback(self.tokenizer.decode(input_ids[0]))
+                self.tokenizer,
+                callback,
             ))
 
         output = self.model.generate(inputs=input_ids, do_sample=False, max_new_tokens=512, stopping_criteria=criteria)

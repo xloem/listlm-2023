@@ -53,7 +53,7 @@ class Model:
     def forward(self, prompt, append = False, **kwparams):
         self.load(**kwparams)
 
-        input_ids = self.tokenizer(self.prompt_template.format(prompt=prompt), return_tensors='pt').input_ids.to(model.device)
+        input_ids = self.tokenizer(self.prompt_template.format(prompt=prompt), return_tensors='pt').input_ids.to(self.model.device)
 
         if append:
             input_ids = torch.cat([self.last_output_ids, input_ids])

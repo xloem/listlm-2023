@@ -20,7 +20,7 @@ class Model:
         self.name = name
         self.revision = revision
         self.prompt_template = prompt_template
-        self.model = None:
+        self.model = None
 
     def forward(self, prompt, **kwparams):
         for key, val in kwparams.items():

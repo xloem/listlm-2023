@@ -13,6 +13,7 @@ class Model:
 [/INST]
 
 ''',
+        callback = None
     ):
         if revision is None:
             revision = "main"
@@ -21,6 +22,7 @@ class Model:
         self.revision = revision
         self.prompt_template = prompt_template
         self.model = None
+        self.callback = callback
 
     class _StreamingOutput(StoppingCriteria):
         def __init__(self, prompt_length, tokenizer, callback):
@@ -48,13 +50,16 @@ class Model:
                                              revision=self.revision)
             self.tokenizer = AutoTokenizer.from_pretrained(self.name, use_fast=True)
 
-    def forward(self, prompt, callback = None, **kwparams):
+    def forward(self, prompt, append = False, **kwparams):
         self.load(**kwparams)
 
         input_ids = self.tokenizer(self.prompt_template.format(prompt=prompt), return_tensors='pt').input_ids.to(model.device)
 
+        if append:
+            input_ids = torch.cat([self.last_output_ids, input_ids])
+
         criteria = []
-        if callback:
+        if self.callback:
             criteria.append(self._StreamingOutput(
                 input_ids.shape[-1],
                 self.tokenizer,
@@ -62,7 +67,12 @@ class Model:
             ))
 
         output = self.model.generate(inputs=input_ids, do_sample=False, max_new_tokens=512, stopping_criteria=criteria)
-        return self.tokenizer.decode(output[0][...,input_ids.shape[-1]:])
+        self.last_output_ids = output[0]
+        self.last_output = self.tokenizer.decode(output[0][...,input_ids.shape[-1]:])
+        return self.last_output
+
+    def forward_more(self, prompt, **kwparams):
+        return self.forward(prompt, append=True, **kwparams)
 
     def output(self, prompt, **kwparams):
         print(prompt)

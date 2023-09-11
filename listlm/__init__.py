@@ -36,7 +36,7 @@ class Model:
                                              revision=self.revision)
             self.tokenizer = AutoTokenizer.from_pretrained(self.name, use_fast=True)
         input_ids = self.tokenizer(self.prompt_template.format(prompt=prompt), return_tensors='pt').input_ids.cuda()
-        output = self.model.generate(inputs=input_ids, temperature=None, do_sample=False, max_new_tokens=512)
+        output = self.model.generate(inputs=input_ids, do_sample=False, max_new_tokens=512)
         return self.tokenizer.decode(output[0][input_ids.shape[0]:])
 
     def output(self, prompt, **kwparams):

@@ -1,3 +1,5 @@
+import sys
+print('importing ...', file=sys.stderr)
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 
@@ -27,6 +29,7 @@ class Model:
                 if key in ('name', 'revision'):
                     self.model = None
         if self.model is None:
+            print('loading ...', file=sys.stderr)
             self.model = AutoModelForCausalLM.from_pretrained(self.name,
                                              torch_dtype=torch.float16,
                                              device_map="auto",

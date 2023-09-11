@@ -18,8 +18,6 @@ prompt_template='''[INST] Write code to solve the following coding problem that 
 
 '''
 
-print("\n\n*** Generate:")
-
 def forward(prompt):
     input_ids = tokenizer(prompt_template.format(prompt=prompt), return_tensors='pt').input_ids.cuda()
     output = model.generate(inputs=input_ids, temperature=0, max_new_tokens=512)

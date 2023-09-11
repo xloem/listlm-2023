@@ -13,7 +13,8 @@ class Model:
 [/INST]
 
 ''',
-        callback = None
+        callback = None,
+        num_beams = 5,
     ):
         if revision is None:
             revision = "main"
@@ -23,18 +24,42 @@ class Model:
         self.prompt_template = prompt_template
         self.model = None
         self.callback = callback
+        self.num_beams = num_beams
 
-    class _StreamingOutput(StoppingCriteria):
+    class _SC_StreamingOutput(StoppingCriteria):
         def __init__(self, prompt_length, tokenizer, callback):
             self.prompt_length = prompt_length
-            self.text = ''
+            self.text = None
             self.tokenizer = tokenizer
             self.callback = callback
         def __call__(self, input_ids, scores, **kwparams):
-            text_length = len(self.text)
-            self.text = self.tokenizer.decode(input_ids[0,self.prompt_length:])
-            self.callback(self.text[text_length:])
+            if self.text is None:
+                self.text = [''] * input_ids.shape[0]
+            for batch_idx in range(input_ids.shape[0]):
+                text = self.tokenizer.decode(input_ids[batch_idx][self.prompt_length:])
+                self.callback(text[len(self.text[batch_idx]):])
+                self.text[batch_idx] = text
             return False
+
+    class _SC_FirstBeam(StoppingCriteria):
+        def __init__(self, model, num_beams):
+            self.model = model
+            self.eos_token_id = model.config.eos_token_id
+            self.vocab_size = model.config.vocab_size
+            self.score_product = torch.ones([num_beams], dtype=torch.float64, device=self.model.device)
+        def __call__(self, input_ids, scores, **kwparams):
+            ended = (input_ids[...,-1] == self.eos_token_id)
+            if scores is not None:
+                self.score_product *= torch.stack(scores).max(dim=-1)
+            if ended.any():
+                ended = ended.nonzero()
+                self.result_idx = ended[self.score_product[ended].argmax()][0]
+                self.result = input_ids[self.result_idx]
+                return True
+            else:
+                self.result_idx = self.score_product.argmax()
+                self.result = input_ids[self.result_idx]
+                return False
 
     def load(self, **kwparams):
         for key, val in kwparams.items():
@@ -48,6 +73,7 @@ class Model:
                                              torch_dtype=torch.float16,
                                              device_map="auto",
                                              revision=self.revision)
+            self.model.eval()
             self.tokenizer = AutoTokenizer.from_pretrained(self.name, use_fast=True)
 
     def forward(self, prompt, append = False, **kwparams):
@@ -58,17 +84,30 @@ class Model:
         if append:
             input_ids = torch.cat([self.last_output_ids, input_ids], dim=-1)
 
-        criteria = []
+        shortest_result_finder = self._SC_FirstBeam(self.model, self.num_beams)
+
+        criteria = [shortest_result_finder]
         if self.callback:
-            criteria.append(self._StreamingOutput(
+            criteria.append(self._SC_StreamingOutput(
                 input_ids.shape[-1],
                 self.tokenizer,
                 self.callback,
             ))
 
-        output = self.model.generate(inputs=input_ids, do_sample=False, max_new_tokens=512, stopping_criteria=criteria)
-        self.last_output_ids = output
-        self.last_output = self.tokenizer.decode(self.last_output_ids[0][...,input_ids.shape[-1]:])
+        output_dict = self.model.generate(
+            inputs=input_ids,
+            num_beams=self.num_beams,
+            top_p=0.5,
+            do_sample=True,
+            max_new_tokens=512,
+            stopping_criteria=criteria,
+            return_dict_in_generate=True, # needed for generating scores passed to stopping criteria
+            output_scores=True,
+        )
+        del output_dict
+        selected_output = shortest_result_finder.result
+        self.last_output_ids = selected_output
+        self.last_output = self.tokenizer.decode(self.last_output_ids[...,input_ids.shape[-1]:])
         return self.last_output
 
     def forward_more(self, prompt, **kwparams):

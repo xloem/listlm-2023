@@ -56,7 +56,7 @@ class Model:
         input_ids = self.tokenizer(self.prompt_template.format(prompt=prompt), return_tensors='pt').input_ids.to(self.model.device)
 
         if append:
-            input_ids = torch.cat([self.last_output_ids, input_ids])
+            input_ids = torch.cat([self.last_output_ids, input_ids], dim=-1)
 
         criteria = []
         if self.callback:
@@ -67,8 +67,8 @@ class Model:
             ))
 
         output = self.model.generate(inputs=input_ids, do_sample=False, max_new_tokens=512, stopping_criteria=criteria)
-        self.last_output_ids = output[0]
-        self.last_output = self.tokenizer.decode(output[0][...,input_ids.shape[-1]:])
+        self.last_output_ids = output
+        self.last_output = self.tokenizer.decode(self.last_output_ids[0][...,input_ids.shape[-1]:])
         return self.last_output
 
     def forward_more(self, prompt, **kwparams):

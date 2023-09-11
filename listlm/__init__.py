@@ -1,7 +1,7 @@
 import sys
 print('importing ...', file=sys.stderr)
 import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
+from transformers import AutoModelForCausalLM, AutoTokenizer, StoppingCriteria
 
 class Model:
     def __init__(
@@ -22,7 +22,16 @@ class Model:
         self.prompt_template = prompt_template
         self.model = None
 
-    def forward(self, prompt, **kwparams):
+    class _StreamingOutput(StoppingCriteria):
+        def __init__(self, prompt_length, callback):
+            self.length = prompt_length
+            self.callback = callback
+        def __call__(self, input_ids, scores, **kwparams):
+            self.callback(input_ids[...,self.length:])
+            self.length = input_ids.shape[-1]
+            return False
+
+    def forward(self, prompt, callback = None, **kwparams):
         for key, val in kwparams.items():
             if val is not None and val != getattr(self, key, None):
                 setattr(self, key, val)
@@ -36,7 +45,15 @@ class Model:
                                              revision=self.revision)
             self.tokenizer = AutoTokenizer.from_pretrained(self.name, use_fast=True)
         input_ids = self.tokenizer(self.prompt_template.format(prompt=prompt), return_tensors='pt').input_ids.cuda()
-        output = self.model.generate(inputs=input_ids, do_sample=False, max_new_tokens=512)
+
+        criteria = []
+        if callback:
+            criteria.append(self._StreamingOutput(
+                input_ids.shape[-1],
+                lambda input_ids: callback(self.tokenizer.decode(input_ids[0]))
+            ))
+
+        output = self.model.generate(inputs=input_ids, do_sample=False, max_new_tokens=512, stopping_criteria=criteria)
         return self.tokenizer.decode(output[0][input_ids.shape[0]:])
 
     def output(self, prompt, **kwparams):

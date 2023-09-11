@@ -51,7 +51,7 @@ class Model:
     def forward(self, prompt, callback = None, **kwparams):
         self.load(**kwparams)
 
-        input_ids = self.tokenizer(self.prompt_template.format(prompt=prompt), return_tensors='pt').input_ids.to(next(self.model.parameters()).device)
+        input_ids = self.tokenizer(self.prompt_template.format(prompt=prompt), return_tensors='pt').input_ids.to(model.device)
 
         criteria = []
         if callback:

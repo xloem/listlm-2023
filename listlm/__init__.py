@@ -15,8 +15,8 @@ class Model:
 ''',
     ):
         if revision is None:
-            #revision = "main"
-            revision = "gptq-8bit-128g-actorder_True"
+            revision = "main"
+            #revision = "gptq-8bit-128g-actorder_True"
         self.name = name
         self.revision = revision
         self.prompt_template = prompt_template

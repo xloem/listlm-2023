@@ -25,6 +25,12 @@ def forward(prompt):
     output = model.generate(inputs=input_ids, temperature=0, max_new_tokens=512)
     return tokenizer.decode(output[0])
 
+def output(prompt):
+    print(prompt)
+    result = forward(prompt)
+    print(result)
+    return result
+
 if __name__ == '__main__':
     import sys
     prompt = sys.argv[1:].join(' ')

@@ -1,37 +1,50 @@
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 
-model_name_or_path = "TheBloke/CodeLlama-13B-Instruct-GPTQ"
-# To use a different branch, change revision
-# For example: revision="gptq-4bit-32g-actorder_True"
-#revision = "main"
-revision = "gptq-8bit-128g-actorder_True"
-model = AutoModelForCausalLM.from_pretrained(model_name_or_path,
-                                             torch_dtype=torch.float16,
-                                             device_map="auto",
-                                             revision=revision)
-
-tokenizer = AutoTokenizer.from_pretrained(model_name_or_path, use_fast=True)
-
-#prompt = "Tell me about AI"
-prompt_template='''[INST] Write code to solve the following coding problem that obeys the constraints and passes the example test cases. Please wrap your code answer using ```:
+class Model:
+    def __init__(
+        self,
+        name = "TheBloke/CodeLlama-13B-Instruct-GPTQ",
+        revision = None,
+        prompt_template='''[INST] Write code to solve the following coding problem that obeys the constraints and passes the example test cases. Please wrap your code answer using ```:
 {prompt}
 [/INST]
 
-'''
+''',
+    ):
+        if revision is None:
+            #revision = "main"
+            revision = "gptq-8bit-128g-actorder_True"
+        self.name = name
+        self.revision = revision
+        self.prompt_template = prompt_template
+        self.model = None:
 
-def forward(prompt):
-    input_ids = tokenizer(prompt_template.format(prompt=prompt), return_tensors='pt').input_ids.cuda()
-    output = model.generate(inputs=input_ids, temperature=None, do_sample=False, max_new_tokens=512)
-    return tokenizer.decode(output[0])
+    def forward(self, prompt, **kwparams):
+        for key, val in kwparams.items():
+            if val is not None and val != getattr(self, key, None):
+                setattr(self, key, val)
+                if key in ('name', 'revision'):
+                    self.model = None
+        if self.model is None:
+            self.model = AutoModelForCausalLM.from_pretrained(self.name,
+                                             torch_dtype=torch.float16,
+                                             device_map="auto",
+                                             revision=self.revision)
+            self.tokenizer = AutoTokenizer.from_pretrained(self.name, use_fast=True)
+        input_ids = self.tokenizer(self.prompt_template.format(prompt=prompt), return_tensors='pt').input_ids.cuda()
+        output = self.model.generate(inputs=input_ids, temperature=None, do_sample=False, max_new_tokens=512)
+        return self.tokenizer.decode(output[0])
 
-def output(prompt):
-    print(prompt)
-    result = forward(prompt)
-    print(result)
-    return result
+    def output(self, prompt, **kwparams):
+        print(prompt)
+        result = forward(prompt, **kwparams)
+        print(result)
+        return result
+
+model = Model()
 
 if __name__ == '__main__':
     import sys
     prompt = sys.argv[1:].join(' ')
-    print(forward(prompt))
+    print(model.forward(prompt))

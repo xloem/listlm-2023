@@ -66,9 +66,7 @@ class Model:
         print(result)
         return result
 
-model = Model()
-
 if __name__ == '__main__':
     import sys
     prompt = sys.argv[1:].join(' ')
-    print(model.forward(prompt))
+    print(Model().forward(prompt))

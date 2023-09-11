@@ -41,7 +41,7 @@ class Model:
                 if key in ('name', 'revision'):
                     self.model = None
         if self.model is None:
-            print('loading ...', file=sys.stderr)
+            print(f'loading {self.name}@{self.revision} ...', file=sys.stderr)
             self.model = AutoModelForCausalLM.from_pretrained(self.name,
                                              torch_dtype=torch.float16,
                                              device_map="auto",

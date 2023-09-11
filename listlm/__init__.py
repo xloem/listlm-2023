@@ -4,10 +4,12 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline
 model_name_or_path = "TheBloke/CodeLlama-13B-Instruct-GPTQ"
 # To use a different branch, change revision
 # For example: revision="gptq-4bit-32g-actorder_True"
+#revision = "main"
+revision = "gptq-8bit-128g-actorder_True"
 model = AutoModelForCausalLM.from_pretrained(model_name_or_path,
                                              torch_dtype=torch.float16,
                                              device_map="auto",
-                                             revision="main")
+                                             revision=revision)
 
 tokenizer = AutoTokenizer.from_pretrained(model_name_or_path, use_fast=True)
 

@@ -44,15 +44,14 @@ class Model:
             print('loading ...', file=sys.stderr)
             self.model = AutoModelForCausalLM.from_pretrained(self.name,
                                              torch_dtype=torch.float16,
-                                             #device_map="auto",
+                                             device_map="auto",
                                              revision=self.revision)
-            self.model = self.model.cuda()
             self.tokenizer = AutoTokenizer.from_pretrained(self.name, use_fast=True)
 
     def forward(self, prompt, callback = None, **kwparams):
         self.load(**kwparams)
 
-        input_ids = self.tokenizer(self.prompt_template.format(prompt=prompt), return_tensors='pt').input_ids.cuda()
+        input_ids = self.tokenizer(self.prompt_template.format(prompt=prompt), return_tensors='pt').input_ids.to(next(self.model.parameters()).device)
 
         criteria = []
         if callback:
